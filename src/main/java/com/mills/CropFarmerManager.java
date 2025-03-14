@@ -1,71 +1,96 @@
 package com.mills;
 
-import java.awt.*;
+import java.awt.Robot;
 import java.awt.event.KeyEvent;
 
 public class CropFarmerManager {
 
-    private CropFarmerGUI gui;
+    private boolean isFarming = false;
+    private final CropFarmerGUI gui;
     private Robot robot;
-    private volatile boolean running = false;
-    private int keyCode;
+    private Thread farmingThread;
 
     public CropFarmerManager(CropFarmerGUI gui) {
         this.gui = gui;
         try {
-            this.robot = new Robot();
-        } catch (AWTException e) {
+            robot = new Robot();
+        } catch (Exception e) {
             e.printStackTrace();
         }
-        this.keyCode = -1;
     }
 
     public void toggleFarming() {
-        if (running) {
-            // Stop farming
-            running = false;
+        if (isFarming) {
+            stopFarming();
         } else {
-            // Start farming
-            running = true;
             startFarming();
         }
     }
 
     private void startFarming() {
-        new Thread(() -> {
-            while (running) {
-                int alternatingTime = gui.getAlternatingTime();
-                int stoppedTime = gui.getStoppedTime();
+        isFarming = true;
 
-                if (alternatingTime <= 0 || stoppedTime < 0) {
-                    running = false;
-                    return;
+        farmingThread = new Thread(() -> {
+            try {
+                while (isFarming) {
+                    int alternatingTime = gui.getAlternatingTime();
+                    int stoppedTime = gui.getStoppedTime();
+
+                    if (alternatingTime <= 0 || stoppedTime < 0) {
+                        stopFarming();
+                        return;
+                    }
+
+                    pressAndHoldKey(KeyEvent.VK_D, alternatingTime);
+                    if (!isFarming) break; // Check if farming was stopped
+                    sleep(stoppedTime);
+
+                    pressAndHoldKey(KeyEvent.VK_A, alternatingTime);
+                    if (!isFarming) break; // Check if farming was stopped
+                    sleep(stoppedTime);
                 }
-
-                pressAndHoldKey(KeyEvent.VK_D, alternatingTime);
-                sleep(stoppedTime);
-
-                if (!running) break;
-
-                pressAndHoldKey(KeyEvent.VK_A, alternatingTime);
-                sleep(stoppedTime);
+            } catch (Exception e) {
+                if (!(e instanceof InterruptedException)) {
+                    e.printStackTrace();
+                }
             }
-        }).start();
+        });
+
+        farmingThread.start();
+    }
+
+    private void stopFarming() {
+        isFarming = false;
+
+        if (farmingThread != null) {
+            farmingThread.interrupt(); // Interrupt the thread
+        }
+
+        try {
+            robot.keyRelease(KeyEvent.VK_D);
+            robot.keyRelease(KeyEvent.VK_A);
+        } catch (Exception ignored) {}
     }
 
     private void pressAndHoldKey(int keyCode, int duration) {
-        if (!running) return;
+        if (!isFarming) return;
 
-        robot.keyPress(keyCode);
-        sleep(duration);
-        robot.keyRelease(keyCode);
+        try {
+            robot.keyPress(keyCode);
+            Thread.sleep(duration); // May be interrupted
+            robot.keyRelease(keyCode);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt(); // Preserve interrupt status
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void sleep(int millis) {
         try {
-            Thread.sleep(millis);
+            Thread.sleep(millis); // May be interrupted
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            Thread.currentThread().interrupt(); // Preserve interrupt status
         }
     }
 }

@@ -1,11 +1,14 @@
 package com.mills;
 
+import com.github.kwhat.jnativehook.GlobalScreen;
+import com.github.kwhat.jnativehook.NativeHookException;
+import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
+import com.github.kwhat.jnativehook.keyboard.NativeKeyListener;
+
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class CropFarmerGUI {
 
@@ -14,15 +17,18 @@ public class CropFarmerGUI {
     private JFrame frame;
     private JTextField alternatingTimeTextBox;
     private JTextField stoppedTimeTextBox;
-    private JLabel pressKeybindLabel;
-    private JButton keybindButton;
-
-    private int keyCode = -1;
-    private boolean keybindWindowOpen = false;
+    private boolean hookRegistered = false;
 
     public CropFarmerGUI() {
+        disableLogging();
+        this.manager = new CropFarmerManager(this);
+        registerGlobalKeybind();
+    }
+
+    public void createGUI() {
+
         frame = new JFrame("Crop Farmer GUI");
-        frame.setSize(600, 300);
+        frame.setSize(600, 220);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.getContentPane().setBackground(Color.DARK_GRAY);
         frame.setLayout(null);
@@ -37,7 +43,7 @@ public class CropFarmerGUI {
         timeLabel.setFont(new Font("Arial", Font.PLAIN, 18));
         timeLabel.setForeground(Color.WHITE);
 
-        alternatingTimeTextBox = new JTextField();
+        alternatingTimeTextBox = new JTextField("1000");
         alternatingTimeTextBox.setBounds(115, 90, 100, 20);
         alternatingTimeTextBox.setFont(new Font("Arial", Font.PLAIN, 16));
         alternatingTimeTextBox.setBackground(Color.BLACK);
@@ -48,7 +54,7 @@ public class CropFarmerGUI {
         alternatingTimeLabel.setFont(new Font("Arial", Font.PLAIN, 16));
         alternatingTimeLabel.setForeground(Color.WHITE);
 
-        stoppedTimeTextBox = new JTextField();
+        stoppedTimeTextBox = new JTextField("1000");
         stoppedTimeTextBox.setBounds(115, 115, 100, 20);
         stoppedTimeTextBox.setFont(new Font("Arial", Font.PLAIN, 16));
         stoppedTimeTextBox.setBackground(Color.BLACK);
@@ -59,23 +65,13 @@ public class CropFarmerGUI {
         stoppedTimeLabel.setFont(new Font("Arial", Font.PLAIN, 16));
         stoppedTimeLabel.setForeground(Color.WHITE);
 
-        JLabel keybindLabel = new JLabel("Select Keybind:");
-        keybindLabel.setBounds(10, 135, 250, 30);
-        keybindLabel.setFont(new Font("Arial", Font.PLAIN, 18));
-        keybindLabel.setForeground(Color.WHITE);
+        JLabel keybindInfoLabel = new JLabel("Keybind: F9");
+        keybindInfoLabel.setBounds(10, 140, 200, 30);
+        keybindInfoLabel.setFont(new Font("Arial", Font.BOLD, 18));
+        keybindInfoLabel.setForeground(Color.WHITE);
 
-        keybindButton = new JButton("Set Keybind");
-        keybindButton.setBounds(10, 185, 135, 30);
-        keybindButton.setFont(new Font("Arial", Font.PLAIN, 16));
-        keybindButton.setForeground(Color.WHITE);
-        keybindButton.setBackground(Color.BLACK);
-
-        pressKeybindLabel = new JLabel("Current Keybind: None");
-        pressKeybindLabel.setBounds(10, 163, 300, 15);
-        pressKeybindLabel.setFont(new Font("Arial", Font.PLAIN, 16));
-        pressKeybindLabel.setForeground(Color.WHITE);
-
-        keybindButton.addActionListener(e -> openKeybindWindow());
+        ImageIcon icon = new ImageIcon("src/main/java/com/mills/carrot.png");
+        frame.setIconImage(icon.getImage());
 
         frame.add(titleLabel);
         frame.add(timeLabel);
@@ -83,90 +79,60 @@ public class CropFarmerGUI {
         frame.add(stoppedTimeTextBox);
         frame.add(alternatingTimeLabel);
         frame.add(stoppedTimeLabel);
-        frame.add(keybindLabel);
-        frame.add(keybindButton);
-        frame.add(pressKeybindLabel);
+        frame.add(keybindInfoLabel);
 
         frame.setLocationRelativeTo(null);
         frame.setResizable(false);
         frame.setVisible(true);
     }
 
-    private void openKeybindWindow() {
-        if (keybindWindowOpen) {
-            JOptionPane.showMessageDialog(frame, "A keybind window is already open!", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        keybindWindowOpen = true;
-        JFrame keybindFrame = new JFrame("Press Key");
-        keybindFrame.setSize(250, 100);
-        keybindFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        keybindFrame.getContentPane().setBackground(Color.DARK_GRAY);
-        keybindFrame.setLayout(new FlowLayout());
-
-        JLabel keybindPromptLabel = new JLabel("Press any key:");
-        keybindPromptLabel.setFont(new Font("Arial", Font.PLAIN, 16));
-        keybindPromptLabel.setForeground(Color.white);
-
-        keybindFrame.add(keybindPromptLabel);
-        keybindFrame.setLocationRelativeTo(null);
-
-        keybindFrame.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                keyCode = e.getKeyCode();  // Store the keyCode here when the user presses a key
-                pressKeybindLabel.setText("Current Keybind: " + KeyEvent.getKeyText(keyCode));  // Display the key name
-                keybindFrame.dispose();
-                keybindWindowOpen = false;
-
-                registerGlobalKeybind(keyCode);  // Use the stored keyCode for keybind registration
+    private void registerGlobalKeybind() {
+        try {
+            if (hookRegistered) {
+                GlobalScreen.unregisterNativeHook();
+                hookRegistered = false;
             }
-        });
+        } catch (NativeHookException ignored) {}
 
-        keybindFrame.addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosed(WindowEvent e) {
-                keybindWindowOpen = false;
-            }
-        });
+        try {
+            GlobalScreen.registerNativeHook();
+            hookRegistered = true;
 
-        keybindFrame.setVisible(true);
-        keybindFrame.setResizable(false);
-        keybindFrame.requestFocusInWindow();
-    }
-
-    private void registerGlobalKeybind(int keyCode) {
-
-        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(e -> {
-
-            if (e.getID() == KeyEvent.KEY_PRESSED && e.getKeyCode() == keyCode) {
-
-                SwingUtilities.invokeLater(() -> {
-                    if (manager != null) {
+            GlobalScreen.addNativeKeyListener(new NativeKeyListener() {
+                @Override
+                public void nativeKeyPressed(NativeKeyEvent e) {
+                    if (e.getKeyCode() == NativeKeyEvent.VC_F9) {
                         manager.toggleFarming();
                     }
-                });
-                return true;
-            }
-            return false;
-        });
+                }
+                @Override
+                public void nativeKeyReleased(NativeKeyEvent e) {}
+                @Override
+                public void nativeKeyTyped(NativeKeyEvent e) {}
+            });
+        } catch (NativeHookException e) {
+            e.printStackTrace();
+        }
     }
 
     public int getAlternatingTime() {
         try {
-            return Integer.parseInt(alternatingTimeTextBox.getText().trim());
+            return Integer.parseInt(alternatingTimeTextBox.getText());
         } catch (NumberFormatException e) {
-            return 0;
+            return 1000;
         }
     }
 
     public int getStoppedTime() {
         try {
-            return Integer.parseInt(stoppedTimeTextBox.getText().trim());
+            return Integer.parseInt(stoppedTimeTextBox.getText());
         } catch (NumberFormatException e) {
-            return 0;
+            return 1000;
         }
     }
 
+    private void disableLogging() {
+        Logger logger = Logger.getLogger(GlobalScreen.class.getPackageName());
+        logger.setLevel(Level.OFF);
+    }
 }
