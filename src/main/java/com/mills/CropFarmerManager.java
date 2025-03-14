@@ -42,11 +42,11 @@ public class CropFarmerManager {
                     }
 
                     pressAndHoldKey(KeyEvent.VK_D, alternatingTime);
-                    if (!isFarming) break; // Check if farming was stopped
+                    if (!isFarming) break;
                     sleep(stoppedTime);
 
                     pressAndHoldKey(KeyEvent.VK_A, alternatingTime);
-                    if (!isFarming) break; // Check if farming was stopped
+                    if (!isFarming) break;
                     sleep(stoppedTime);
                 }
             } catch (Exception e) {
@@ -63,7 +63,7 @@ public class CropFarmerManager {
         isFarming = false;
 
         if (farmingThread != null) {
-            farmingThread.interrupt(); // Interrupt the thread
+            farmingThread.interrupt();
         }
 
         try {
@@ -77,10 +77,10 @@ public class CropFarmerManager {
 
         try {
             robot.keyPress(keyCode);
-            Thread.sleep(duration); // May be interrupted
+            Thread.sleep(duration);
             robot.keyRelease(keyCode);
         } catch (InterruptedException e) {
-            Thread.currentThread().interrupt(); // Preserve interrupt status
+            Thread.currentThread().interrupt();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -88,9 +88,9 @@ public class CropFarmerManager {
 
     private void sleep(int millis) {
         try {
-            Thread.sleep(millis); // May be interrupted
+            Thread.sleep(millis);
         } catch (InterruptedException e) {
-            Thread.currentThread().interrupt(); // Preserve interrupt status
+            Thread.currentThread().interrupt();
         }
     }
 }
