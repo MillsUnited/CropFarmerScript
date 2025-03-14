@@ -28,7 +28,7 @@ public class CropFarmerGUI {
     public void createGUI() {
 
         frame = new JFrame("Crop Farmer GUI");
-        frame.setSize(600, 220);
+        frame.setSize(400, 220);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.getContentPane().setBackground(Color.DARK_GRAY);
         frame.setLayout(null);
@@ -70,7 +70,7 @@ public class CropFarmerGUI {
         keybindInfoLabel.setFont(new Font("Arial", Font.BOLD, 18));
         keybindInfoLabel.setForeground(Color.WHITE);
 
-        ImageIcon icon = new ImageIcon("src/main/java/com/mills/carrot.png");
+        ImageIcon icon = new ImageIcon(Main.class.getResource("/com/mills/carrot.png"));
         frame.setIconImage(icon.getImage());
 
         frame.add(titleLabel);
